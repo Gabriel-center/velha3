@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TIC-TAC-TOE 3D [SYNC_VISUALS]</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Courier+New:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-screen: #40318d;
+            --surface: #c0c0c0;
+            --light: #ffffff;
+            --dark: #808080;
+            --darker: #404040;
+            --title-grad-start: #000080;
+            --title-grad-end: #1084d0;
+            --layer-1: rgba(255, 128, 128, 0.4);
+            --layer-2: rgba(128, 255, 128, 0.4);
+            --layer-3: rgba(128, 128, 255, 0.4);
+            --highlight: #ff00ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-screen);
+            font-family: 'VT323', monospace;
+            color: #000;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* CRT SCANLINES */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* WIN95 PANEL */
+        .win-panel {
+            background: var(--surface);
+            border-top: 2px solid var(--light);
+            border-left: 2px solid var(--light);
+            border-right: 2px solid var(--darker);
+            border-bottom: 2px solid var(--darker);
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .win-title {
+            background: linear-gradient(90deg, var(--title-grad-start), var(--title-grad-end));
+            color: var(--light);
+            padding: 4px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+
+        .win-btn-icon {
+            background: var(--surface);
+            color: #000;
+            border-top: 1px solid var(--light);
+            border-left: 1px solid var(--light);
+            border-right: 1px solid var(--darker);
+            border-bottom: 1px solid var(--darker);
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* RETRO BUTTONS */
+        .retro-btn {
+            background: var(--surface);
+            font-family: 'VT323', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            padding: 8px 16px;
+            border-top: 2px solid var(--light);
+            border-left: 2px solid var(--light);
+            border-right: 2px solid var(--darker);
+            border-bottom: 2px solid var(--darker);
+            cursor: pointer;
+            margin: 2px;
+            text-align: center;
+        }
+        .retro-btn:active {
+            border-top: 2px solid var(--darker);
+            border-left: 2px solid var(--darker);
+            border-right: 2px solid var(--light);
+            border-bottom: 2px solid var(--light);
+            transform: translate(1px, 1px);
+        }
+
+        /* STATUS BAR */
+        .status-bar {
+            padding: 10px;
+            background: var(--surface);
+            border-bottom: 2px solid var(--dark);
+            font-size: 1.3rem;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            gap: 10px;
+        }
+
+        .turn-indicator {
+            background: #000;
+            color: #0f0;
+            padding: 2px 8px;
+            font-family: 'Courier New', monospace;
+            border: 2px inset var(--dark);
+            flex: 1;
+            font-size: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tab-container {
+            display: flex;
+            padding: 4px;
+            gap: 4px;
+            background: var(--dark);
+            flex-shrink: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 6px;
+            background: var(--surface);
+            border-top: 2px solid var(--light);
+            border-left: 2px solid var(--light);
+            border-right: 2px solid #000;
+            border-bottom: 2px solid var(--surface);
+            cursor: pointer;
+            position: relative;
+            top: 2px;
+            z-index: 1;
+        }
+
+        .tab-btn.active {
+            font-weight: bold;
+            border-bottom: 2px solid var(--surface);
+            padding-top: 8px;
+            top: 0px;
+            z-index: 2;
+        }
+
+        .viewport {
+            flex: 1;
+            background: var(--darker);
+            position: relative;
+            overflow: hidden;
+            border: 2px inset var(--light);
+            min-height: 0;
+        }
+
+        /* 2D MODE */
+        .view-2d {
+            height: 100%;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .layer-container {
+            background: var(--surface);
+            border: 2px outset var(--light);
+            padding: 5px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .layer-label {
+            text-align: center;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+        }
+
+        .grid-3x3 {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-rows: repeat(3, minmax(0, 1fr));
+            gap: 4px;
+            background: var(--dark);
+            padding: 4px;
+            aspect-ratio: 1/1;
+        }
+
+        .cell {
+            background: var(--surface);
+            /* Default bevel borders (overridden by colored layers) */
+            border: 1px solid var(--dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+        
+        .cell:active {
+            transform: scale(0.98);
+        }
+
+        /* HOLE */
+        .cell.void-cell {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* MATCHING OUTLINES FOR 2D LAYERS */
+        /* Replaces the bevel with the exact 3D border style */
+        .cell[data-layer="0"] { 
+            background-color: #ffd0d0; 
+            border: 2px solid #ff0000;
+        }
+        .cell[data-layer="1"] { 
+            background-color: #d0ffd0; 
+            border: 2px solid #00ff00;
+        }
+        .cell[data-layer="2"] { 
+            background-color: #d0d0ff; 
+            border: 2px solid #0000ff;
+        }
+
+        /* LAST MOVE HIGHLIGHT (2D) */
+        .cell.last-move {
+            border-color: var(--highlight) !important;
+            box-shadow: inset 0 0 10px var(--highlight);
+            z-index: 10;
+        }
+        
+        /* Winner overrides last move */
+        .cell.winner {
+            background-color: #ffff00 !important;
+            color: #000;
+            border-color: #fff !important;
+            box-shadow: none !important;
+            animation: blink 0.5s step-end infinite alternate;
+            z-index: 20;
+        }
+
+        /* 3D MODE */
+        .view-3d {
+            width: 100%;
+            height: 100%;
+            perspective: 800px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #202020;
+            background-image: 
+                linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center center;
+            touch-action: none;
+        }
+
+        .scene-y {
+            position: relative;
+            transform-style: preserve-3d;
+            width: 0; height: 0;
+        }
+        
+        .scene-x {
+            position: relative;
+            transform-style: preserve-3d;
+            width: 0; height: 0;
+        }
+
+        .cube-cell {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            left: 0; top: 0;
+            margin-left: -30px; 
+            margin-top: -30px;
+            border: 1px solid rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            backface-visibility: visible;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+            transition: background-color 0.3s;
+            flex-shrink: 0;
+            flex-grow: 0;
+            white-space: nowrap;
+        }
+        
+        .cube-cell.layer-0 { background: var(--layer-1); border: 2px solid #ff0000; }
+        .cube-cell.layer-1 { background: var(--layer-2); border: 2px solid #00ff00; }
+        .cube-cell.layer-2 { background: var(--layer-3); border: 2px solid #0000ff; }
+
+        /* LAST MOVE HIGHLIGHT (3D) */
+        .cube-cell.last-move {
+            border-color: var(--highlight) !important;
+            box-shadow: 0 0 15px var(--highlight) !important;
+        }
+
+        .controls {
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            background: var(--surface);
+            border-top: 2px solid var(--light);
+            flex-shrink: 0;
+            justify-content: space-between;
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 5px;
+            width: 100%;
+        }
+
+        .controls .retro-btn {
+            flex: 1;
+            font-size: 1rem;
+            padding: 8px 4px;
+        }
+
+        #autoPilotLabel {
+            position: absolute; 
+            bottom: 10px; 
+            left: 10px; 
+            color: #fff; 
+            background: rgba(0,0,0,0.5); 
+            padding: 2px; 
+            font-family: 'Courier New'; 
+            font-size: 10px; 
+            pointer-events: none;
+        }
+
+        @keyframes blink { 0% { opacity: 1; } 100% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+
+    <div class="win-panel">
+        <div class="win-title">
+            <span>TIC-TAC-TOE 3D.EXE</span>
+            <div class="win-btn-icon" onclick="location.reload()">X</div>
+        </div>
+
+        <div class="status-bar">
+            <span>STATUS:</span>
+            <div class="turn-indicator" id="statusText">AGUARDANDO JOGADOR X</div>
+        </div>
+
+        <div class="tab-container">
+            <div class="tab-btn active" id="tab2D" onclick="switchView('2d')">ENTRADA (2D)</div>
+            <div class="tab-btn" id="tab3D" onclick="switchView('3d')">VISUAL 3D</div>
+        </div>
+
+        <div class="viewport">
+            <div class="view-2d" id="view2D">
+                <div class="layer-container">
+                    <div class="layer-label" style="color:#800000">CAMADA 1 (VERMELHO)</div>
+                    <div class="grid-3x3" id="gridL1"></div>
+                </div>
+                <div class="layer-container">
+                    <div class="layer-label" style="color:#004000">CAMADA 2 (VERDE)</div>
+                    <div class="grid-3x3" id="gridL2"></div>
+                </div>
+                <div class="layer-container">
+                    <div class="layer-label" style="color:#000080">CAMADA 3 (AZUL)</div>
+                    <div class="grid-3x3" id="gridL3"></div>
+                </div>
+            </div>
+
+            <div class="view-3d" id="view3D">
+                <div class="scene-y" id="sceneY">
+                    <div class="scene-x" id="sceneX"></div>
+                </div>
+                <div id="autoPilotLabel">SISTEMA DE ROTACAO: ATIVO</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="controls-row">
+                <button class="retro-btn" id="btnMode" onclick="game.toggleMode()">MODO: PVP</button>
+                <button class="retro-btn" onclick="game.reset()">REINICIAR</button>
+                <button class="retro-btn" id="btnAudio" onclick="audioSys.toggle()">SOM: ON</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+class AudioSystem {
+    constructor() { 
+        this.ctx = null; 
+        this.enabled = true; // Default ON
+    }
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        this.enabled = true;
+        document.getElementById('btnAudio').innerText = "SOM: ON";
+        // Attempt to play start tone, might be blocked until interact
+        this.playTone(440, 'square', 0.1); 
+    }
+
+    toggle() {
+        if (!this.enabled) {
+            this.init();
+        } else {
+            this.enabled = false;
+            document.getElementById('btnAudio').innerText = "SOM: OFF";
+        }
+    }
+
+    playTone(freq, type, duration) {
+        if (!this.enabled) return;
+        
+        // Lazy initialization on first sound if context missing
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Ensure context is running (fixes autoplay policy)
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    }
+
+    sfxMove() { this.playTone(800, 'square', 0.05); }
+    sfxWin() { 
+        if (!this.enabled || !this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        let now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.value = f;
+            gain.gain.setValueAtTime(0.1, now + i*0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i*0.1 + 0.3);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + i*0.1);
+            osc.stop(now + i*0.1 + 0.3);
+        });
+    }
+    sfxError() { this.playTone(150, 'sawtooth', 0.3); }
+}
+
+const audioSys = new AudioSystem();
+
+class Game3D {
+    constructor() {
+        this.board = Array(27).fill(null);
+        this.board[13] = 'VOID'; 
+        this.currentPlayer = 'X';
+        this.winner = null;
+        this.winningLine = [];
+        this.lastMoveIdx = null; 
+        this.modes = ['PVP', 'CPU_EASY', 'CPU_NORMAL', 'CPU_HARD'];
+        this.currentModeIdx = 0;
+        this.cpuThinking = false;
+        
+        this.allLines = this.generateLines();
+
+        this.initDOM();
+        this.render();
+    }
+
+    generateLines() {
+        let lines = [];
+        const isValid = (x,y,z) => x>=0 && x<3 && y>=0 && y<3 && z>=0 && z<3;
+        const getIdx = (x,y,z) => z*9 + y*3 + x;
+        const directions = [
+            [1,0,0], [0,1,0], [0,0,1], 
+            [1,1,0], [1,-1,0], [1,0,1], [1,0,-1], [0,1,1], [0,1,-1],
+            [1,1,1], [1,1,-1], [1,-1,1], [1,-1,-1]
+        ];
+
+        for (let z=0; z<3; z++) {
+            for (let y=0; y<3; y++) {
+                for (let x=0; x<3; x++) {
+                    for (let d of directions) {
+                        let line = [];
+                        for(let k=0; k<3; k++) {
+                            let nx = x + d[0]*k;
+                            let ny = y + d[1]*k;
+                            let nz = z + d[2]*k;
+                            if(isValid(nx,ny,nz)) line.push(getIdx(nx,ny,nz));
+                            else break;
+                        }
+                        if (line.length === 3 && !line.includes(13)) {
+                            lines.push(line);
+                        }
+                    }
+                }
+            }
+        }
+        const uniqueLines = [];
+        const seen = new Set();
+        for(let l of lines) {
+            const key = l.slice().sort((a,b)=>a-b).join(',');
+            if(!seen.has(key)) {
+                seen.add(key);
+                uniqueLines.push(l);
+            }
+        }
+        return uniqueLines; 
+    }
+
+    initDOM() {
+        const grids = [document.getElementById('gridL1'), document.getElementById('gridL2'), document.getElementById('gridL3')];
+        grids.forEach((grid, z) => {
+            grid.innerHTML = '';
+            for (let y = 0; y < 3; y++) {
+                for (let x = 0; x < 3; x++) {
+                    const idx = this.getIdx(x, y, z);
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (idx === 13) cell.classList.add('void-cell');
+                    cell.dataset.index = idx;
+                    cell.dataset.layer = z;
+                    cell.onclick = () => this.move(idx);
+                    grid.appendChild(cell);
+                }
+            }
+        });
+
+        const sceneX = document.getElementById('sceneX');
+        sceneX.innerHTML = '';
+        const step = 70;
+        for (let z = 0; z < 3; z++) {
+            for (let y = 0; y < 3; y++) {
+                for (let x = 0; x < 3; x++) {
+                    const idx = this.getIdx(x, y, z);
+                    if (idx === 13) continue;
+
+                    const el = document.createElement('div');
+                    el.className = `cube-cell layer-${z}`;
+                    const offsetX = (x - 1) * step;
+                    const offsetY = (y - 1) * step;
+                    const offsetZ = (z - 1) * step;
+                    el.style.transform = `translate3d(${offsetX}px, ${offsetY}px, ${offsetZ}px)`;
+                    el.dataset.index = idx;
+                    el.onclick = () => this.move(idx);
+                    sceneX.appendChild(el);
+                }
+            }
+        }
+    }
+
+    getIdx(x, y, z) { return z * 9 + y * 3 + x; }
+
+    toggleMode() {
+        this.currentModeIdx = (this.currentModeIdx + 1) % this.modes.length;
+        const modeName = this.modes[this.currentModeIdx];
+        document.getElementById('btnMode').innerText = `MODO: ${modeName.replace('CPU_', 'CPU ')}`;
+        this.reset();
+    }
+
+    move(idx) {
+        if (idx === 13) return;
+        if (this.board[idx] || this.winner || this.cpuThinking) { 
+            if(!this.board[idx]) audioSys.sfxError(); 
+            return; 
+        }
+
+        this.board[idx] = this.currentPlayer;
+        this.lastMoveIdx = idx;
+        audioSys.sfxMove();
+        
+        const winLine = this.checkWin(this.currentPlayer);
+        if (winLine) {
+            this.winner = this.currentPlayer;
+            this.winningLine = winLine;
+            document.getElementById('statusText').innerText = `VITORIA: JOGADOR ${this.winner}`;
+            document.getElementById('statusText').style.color = '#ffff00';
+            document.getElementById('statusText').classList.add('blink');
+            audioSys.sfxWin();
+            this.render();
+            return;
+        } else {
+            const filled = this.board.filter(c => c !== null && c !== 'VOID').length;
+            if (filled === 26) {
+                document.getElementById('statusText').innerText = "EMPATE [MEMORIA CHEIA]";
+                document.getElementById('statusText').style.color = '#fff';
+                this.render();
+                return;
+            }
+        }
+
+        this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+        
+        const mode = this.modes[this.currentModeIdx];
+        if (mode !== 'PVP' && this.currentPlayer === 'O') {
+            document.getElementById('statusText').innerText = "CPU PROCESSANDO...";
+            document.getElementById('statusText').style.color = '#ff00ff';
+            this.cpuThinking = true;
+            this.render();
+            setTimeout(() => this.cpuMove(mode), 600);
+        } else {
+            document.getElementById('statusText').innerText = `AGUARDANDO JOGADOR ${this.currentPlayer}`;
+            document.getElementById('statusText').style.color = '#0f0';
+            this.render();
+        }
+    }
+
+    cpuMove(mode) {
+        let moveIdx = -1;
+        const avail = this.board.map((v,i) => (v===null && i!==13) ? i : null).filter(v => v!==null);
+
+        const findWinning = (player) => {
+            for (let line of this.allLines) {
+                let count = 0, empty = -1;
+                for (let i of line) {
+                    if (this.board[i] === player) count++;
+                    else if (this.board[i] === null) empty = i;
+                }
+                if (count === 2 && empty !== -1) return empty;
+            }
+            return -1;
+        }
+
+        const findStreak = (player) => {
+            const potentialMoves = [];
+            for (let line of this.allLines) {
+                let count = 0, blanks = [];
+                for (let i of line) {
+                    if (this.board[i] === player) count++;
+                    else if (this.board[i] === null) blanks.push(i);
+                    else { count = -99; break; }
+                }
+                if (count === 1 && blanks.length === 2) {
+                    potentialMoves.push(...blanks);
+                }
+            }
+            if (potentialMoves.length > 0) return potentialMoves[Math.floor(Math.random() * potentialMoves.length)];
+            return -1;
+        }
+
+        if (mode === 'CPU_EASY') {
+            moveIdx = findWinning('O');
+            if (moveIdx === -1) {
+                let threat = findWinning('X');
+                if (threat !== -1 && Math.random() < 0.5) moveIdx = threat;
+            }
+            if (moveIdx === -1) {
+                for (let line of this.allLines) {
+                    if (line.every(i => this.board[i] === null)) {
+                        moveIdx = line[Math.floor(Math.random()*3)];
+                        break;
+                    }
+                }
+            }
+            if (moveIdx === -1 && avail.length > 0) moveIdx = avail[Math.floor(Math.random()*avail.length)];
+        } 
+        else if (mode === 'CPU_NORMAL') {
+            moveIdx = findWinning('O');
+            if (moveIdx === -1) moveIdx = findWinning('X');
+            if (moveIdx === -1) moveIdx = findStreak('O');
+            if (moveIdx === -1 && avail.length > 0) moveIdx = avail[Math.floor(Math.random()*avail.length)];
+        } 
+        else if (mode === 'CPU_HARD') {
+            const filled = 26 - avail.length;
+            const faceCenters = [4, 10, 12, 14, 16, 22];
+            const validCenters = faceCenters.filter(i => this.board[i] === null);
+            
+            if (filled < 2 && validCenters.length > 0) {
+                moveIdx = validCenters[Math.floor(Math.random()*validCenters.length)];
+            } else {
+                moveIdx = this.getBestMoveMinimax(avail);
+            }
+        }
+
+        this.cpuThinking = false;
+        if (moveIdx !== -1) this.move(moveIdx);
+    }
+
+    getBestMoveMinimax(avail) {
+        let bestScore = -Infinity;
+        let move = avail[0];
+        let depthLimit = 2; 
+
+        for(let idx of avail) {
+            this.board[idx] = 'O';
+            let score = this.minimax(this.board, 0, false, -Infinity, Infinity, depthLimit);
+            this.board[idx] = null;
+            if (score > bestScore) {
+                bestScore = score;
+                move = idx;
+            }
+        }
+        return move;
+    }
+
+    minimax(board, depth, isMaximizing, alpha, beta, limit) {
+        if (this.checkWin('O')) return 1000 - depth;
+        if (this.checkWin('X')) return -1000 + depth;
+        
+        const avail = board.map((v,i)=> (v===null && i!==13)?i:null).filter(v=>v!==null);
+        if (avail.length === 0) return 0;
+        if (depth === limit) return this.evaluateBoard();
+
+        if (isMaximizing) {
+            let maxEval = -Infinity;
+            for (let idx of avail) {
+                board[idx] = 'O';
+                let ev = this.minimax(board, depth+1, false, alpha, beta, limit);
+                board[idx] = null;
+                maxEval = Math.max(maxEval, ev);
+                alpha = Math.max(alpha, ev);
+                if (beta <= alpha) break;
+            }
+            return maxEval;
+        } else {
+            let minEval = Infinity;
+            for (let idx of avail) {
+                board[idx] = 'X';
+                let ev = this.minimax(board, depth+1, true, alpha, beta, limit);
+                board[idx] = null;
+                minEval = Math.min(minEval, ev);
+                beta = Math.min(beta, ev);
+                if (beta <= alpha) break;
+            }
+            return minEval;
+        }
+    }
+
+    evaluateBoard() {
+        let score = 0;
+        for (let line of this.allLines) {
+            let oCount = 0;
+            let xCount = 0;
+            for (let idx of line) {
+                if (this.board[idx] === 'O') oCount++;
+                else if (this.board[idx] === 'X') xCount++;
+            }
+            if (oCount === 2 && xCount === 0) score += 50;
+            if (xCount === 2 && oCount === 0) score -= 50;
+            if (oCount === 1 && xCount === 0) score += 5;
+            if (xCount === 1 && oCount === 0) score -= 5;
+        }
+        const faceCenters = [4, 10, 12, 14, 16, 22];
+        const corners = [0, 2, 6, 8, 18, 20, 24, 26];
+        for (let idx = 0; idx < 27; idx++) {
+            if (this.board[idx] === 'O') {
+                if (faceCenters.includes(idx)) score += 20;
+                else if (corners.includes(idx)) score += 10;
+            }
+        }
+        return score;
+    }
+
+    reset() {
+        this.board = Array(27).fill(null);
+        this.board[13] = 'VOID';
+        this.currentPlayer = 'X';
+        this.winner = null;
+        this.winningLine = [];
+        this.lastMoveIdx = null; 
+        this.cpuThinking = false;
+        document.getElementById('statusText').innerText = `AGUARDANDO JOGADOR X`;
+        document.getElementById('statusText').style.color = '#0f0';
+        document.getElementById('statusText').classList.remove('blink');
+        audioSys.playTone(300, 'triangle', 0.2);
+        this.render();
+    }
+
+    checkWin(player) {
+        for (let line of this.allLines) {
+            const [a,b,c] = line;
+            if (this.board[a] && this.board[a] === this.board[b] && this.board[a] === this.board[c]) {
+                if (player && this.board[a] !== player) continue;
+                return line;
+            }
+        }
+        return null;
+    }
+
+    render() {
+        const cells2D = document.querySelectorAll('.cell');
+        cells2D.forEach(c => {
+            const idx = parseInt(c.dataset.index);
+            if (idx === 13) return; 
+            const val = this.board[idx] || '';
+            c.innerText = val;
+            c.style.color = val === 'X' ? '#000' : '#fff';
+            if (val === 'O') c.style.textShadow = '1px 1px 0 #000';
+            else c.style.textShadow = 'none';
+            
+            c.classList.remove('winner', 'last-move');
+            if (this.winningLine.includes(idx)) {
+                c.classList.add('winner');
+            } else if (this.lastMoveIdx === idx) {
+                c.classList.add('last-move');
+            }
+        });
+
+        const cells3D = document.querySelectorAll('.cube-cell');
+        cells3D.forEach(c => {
+            const idx = parseInt(c.dataset.index);
+            if (idx === 13) return;
+            const val = this.board[idx] || '';
+            c.innerText = val;
+            c.style.color = val === 'X' ? '#000' : '#fff';
+            
+            c.classList.remove('last-move'); 
+            
+            if (this.winningLine.includes(idx)) {
+                c.style.borderColor = '#ffff00';
+                c.style.boxShadow = '0 0 15px #ffff00';
+                c.style.background = '#ffff00';
+                c.style.color = '#000';
+            } else {
+                const z = Math.floor(idx / 9);
+                c.style.background = z===0 ? 'var(--layer-1)' : z===1 ? 'var(--layer-2)' : 'var(--layer-3)';
+                c.style.color = val === 'X' ? '#000' : '#fff';
+
+                if (this.lastMoveIdx === idx) {
+                    c.classList.add('last-move'); 
+                } else {
+                    c.style.borderColor = z===0 ? '#ff0000' : z===1 ? '#00ff00' : '#0000ff';
+                    c.style.boxShadow = 'inset 0 0 10px rgba(0,0,0,0.2)';
+                }
+            }
+        });
+    }
+}
+
+const game = new Game3D();
+
+const view2D = document.getElementById('view2D');
+const view3D = document.getElementById('view3D');
+const sceneY = document.getElementById('sceneY');
+const sceneX = document.getElementById('sceneX');
+const tab2D = document.getElementById('tab2D');
+const tab3D = document.getElementById('tab3D');
+const autoLabel = document.getElementById('autoPilotLabel');
+
+function switchView(mode) {
+    if (mode === '2d') {
+        view2D.style.display = 'flex';
+        view3D.style.display = 'none';
+        tab2D.classList.add('active');
+        tab3D.classList.remove('active');
+    } else {
+        view2D.style.display = 'none';
+        view3D.style.display = 'flex';
+        tab2D.classList.remove('active');
+        tab3D.classList.add('active');
+        updateScene();
+    }
+}
+
+let isDragging = false, startX, startY;
+let rotX = 25, rotY = 45; 
+let vx = 0, vy = 0;
+let friction = 0.95;
+let lastInteraction = Date.now();
+const TARGET_X = 25; 
+const IDLE_DELAY = 2000;
+
+view3D.addEventListener('mousedown', startDrag);
+view3D.addEventListener('touchstart', (e) => startDrag(e.touches[0]));
+window.addEventListener('mousemove', moveDrag);
+window.addEventListener('touchmove', (e) => moveDrag(e.touches[0]));
+window.addEventListener('mouseup', endDrag);
+window.addEventListener('touchend', endDrag);
+
+function startDrag(e) {
+    if (view3D.style.display === 'none') return;
+    isDragging = true;
+    startX = e.clientX; startY = e.clientY;
+    vx = 0; vy = 0;
+    lastInteraction = Date.now();
+}
+
+function moveDrag(e) {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    vx = dx * 0.5;
+    vy = dy * 0.5;
+    rotY += vx; 
+    rotX += vy; 
+    startX = e.clientX; startY = e.clientY;
+    lastInteraction = Date.now();
+    updateScene();
+}
+
+function endDrag() { 
+    isDragging = false; 
+    lastInteraction = Date.now(); 
+}
+
+function updateScene() { 
+    sceneY.style.transform = `rotateY(${rotY}deg)`;
+    sceneX.style.transform = `rotateX(${rotX}deg)`;
+}
+
+function lerp(start, end, amt) {
+    return (1 - amt) * start + amt * end;
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    const now = Date.now();
+    const isIdle = (now - lastInteraction) > IDLE_DELAY;
+    if (!isDragging) {
+        if (isIdle) {
+            vx *= 0.8; vy *= 0.8; 
+            rotX = lerp(rotX, TARGET_X, 0.05);
+            rotY += 0.2; 
+            if (view3D.style.display !== 'none') {
+                autoLabel.innerText = "AUTO-PILOTO: ATIVO [ALINHANDO]";
+                autoLabel.style.color = "#0f0";
+            }
+        } else {
+            if (Math.abs(vx) > 0.01 || Math.abs(vy) > 0.01) {
+                rotY += vx;
+                rotX += vy; 
+                vx *= friction;
+                vy *= friction;
+            }
+            if (view3D.style.display !== 'none') {
+                autoLabel.innerText = "CONTROLE MANUAL";
+                autoLabel.style.color = "#fff";
+            }
+        }
+    } else {
+        if (view3D.style.display !== 'none') {
+            autoLabel.innerText = "CONTROLE MANUAL";
+            autoLabel.style.color = "#ffff00";
+        }
+    }
+    updateScene();
+}
+
+animate();
+</script>
+</body>
+</html>
